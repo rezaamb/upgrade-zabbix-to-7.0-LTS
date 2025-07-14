@@ -34,19 +34,34 @@ sudo systemctl restart php8.2-fpm
 ```
 بروزرسانی دیتابیس
 ابتدا سرویس PostgreSQL فعلی رو متوقف می‌کنیم:
+
 ```bash
-systemctl stop postgresql-13
+systemctl stop postgresql
+```
+در Ubuntu برای نصب PostgreSQL 16 ابتدا باید مخزن PostgreSQL را اضافه کنی:
+```bash
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo apt update
+sudo apt install postgresql-16
 ```
 
+
 نصب TimescaleDB
-حالا TimescaleDB رو نصب می‌کنیم، ولی حتما باید همون نسخه قبلی باشه، چون در غیر اینصورت ارتقا کار نمی‌کنه.
+حالا TimescaleDB رو نصب می‌کنیم، ولی حتما باید همون نسخه قبلی باشه، چون در غیر اینصورت ارتقا کار نمی‌کنه.اول باید نسخه TimescaleDB که روی PostgreSQL 13 داشتی رو چک کنی:
 ```bash
-VERSION=$(rpm -qa | grep timescaledb-2-postgresql-13 | head -1 | sed -n 's/.*-\([0-9]\+\.[0-9]\+\.[0-9]\+\)-.*/\1/p') && dnf install -y timescaledb-2-loader-postgresql-16-$VERSION-0.el9.x86_64 timescaledb-2-postgresql-16-$VERSION-0.el9.x86_64
+dpkg -l | grep timescaledb
+```
+سپس نسخه مشابه را برای PostgreSQL 16 نصب کن:
+```bash
+sudo apt install timescaledb-2-postgresql-16
 ```
 
 مقداردهی اولیه PostgreSQL 16
+
+(این مسیر ممکنه با نسخه سیستم شما متفاوت باشد، مسیر دقیق را با pg_lsclusters چک کن)
 ```bash
-/usr/pgsql-16/bin/postgresql-16-setup initdb
+sudo /usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/16/main
 ```
 
 اجرای ارتقا با کاربر postgres
@@ -59,14 +74,19 @@ su - postgres
 
 انتقال فایل‌های کانفیگ
 ```bash
-cat /var/lib/pgsql/13/data/pg_hba.conf > /var/lib/pgsql/16/data/pg_hba.conf
-
-cat /var/lib/pgsql/13/data/postgresql.conf > /var/lib/pgsql/16/data/postgresql.conf
+sudo cp /etc/postgresql/13/main/pg_hba.conf /etc/postgresql/16/main/
+sudo cp /etc/postgresql/13/main/postgresql.conf /etc/postgresql/16/main/
 ```
 
 اجرای مهاجرت دیتابیس
 ```bash
-/usr/pgsql-16/bin/pg_upgrade -b /usr/pgsql-13/bin -B /usr/pgsql-16/bin -d /var/lib/pgsql/13/data -D /var/lib/pgsql/16/data -k
+/sudo pg_upgrade \
+  -b /usr/lib/postgresql/13/bin \
+  -B /usr/lib/postgresql/16/bin \
+  -d /var/lib/postgresql/13/main \
+  -D /var/lib/postgresql/16/main \
+  -k
+
 ```
 
 
@@ -78,23 +98,25 @@ logout
 غیرفعال‌کردن نسخه قدیمی
 ```bash
 systemctl disable postgresql-13.service
+sudo systemctl disable postgresql@13-main
+sudo systemctl stop postgresql@13-main
 ```
 
 فعال و شروع PostgreSQL 16
 
 ```bash
-systemctl enable postgresql-16.service --now
+sudo systemctl enable postgresql@16-main
+sudo systemctl start postgresql@16-main
 ```
 
 
 به‌روزرسانی TimescaleDB در دیتابیس Zabbix
 
 ```bash
-su - postgres
-psql -X
+sudo -i -u postgres psql
 \c zabbix
 ALTER EXTENSION timescaledb UPDATE;
-exit
+\q
 ```
 
 
@@ -102,33 +124,36 @@ exit
 پاکسازی و حذف نسخه‌های قدیمی PostgreSQL
 
 ```bash
-./delete_old_cluster.sh
-rm -rf 13 delete_old_cluster.sh
-logout
-dnf remove postgresql13-*
-rm -rf /usr/pgsql-13/
+sudo apt remove postgresql-13 postgresql-client-13 postgresql-contrib-13
+sudo rm -rf /var/lib/postgresql/13/
+sudo rm -rf /etc/postgresql/13/
+
 ```
 
 
 افزودن ریپو و آپدیت Zabbix
 ```bash
-rpm -Uvh https://repo.zabbix.com/zabbix/7.0/rocky/9/x86_64/zabbix-release-latest.el9.noarch.rpm
-dnf clean all
-dnf update zabbix-* -y
+wget https://repo.zabbix.com/zabbix/7.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_7.0-1+ubuntu$(lsb_release -rs)_all.deb
+sudo dpkg -i zabbix-release_7.0-1+ubuntu$(lsb_release -rs)_all.deb
+sudo apt update
+sudo apt install --only-upgrade zabbix-server-pgsql zabbix-frontend-php zabbix-agent
+
 ```
 
 
 شروع Zabbix و آپدیت دیتابیس
 
 ```bash
-systemctl start zabbix-server.service
+sudo systemctl start zabbix-server
+
 ```
 بعد از شروع، Zabbix جداول جدید مثل history_bin رو میسازه.
 
 
 توقف مجدد Zabbix
 ```bash
-systemctl stop zabbix-server.service
+sudo systemctl stop zabbix-server
+
 ```
 
 اجرای اسکریپت TimescaleDB
@@ -136,13 +161,15 @@ systemctl stop zabbix-server.service
 
 ```bash
 cat /usr/share/zabbix-sql-scripts/postgresql/timescaledb/schema.sql | sudo -u zabbix psql zabbix
+
 ```
 
 
 شروع مجدد سرویس‌ها
 ```bash
-systemctl start zabbix-server.service
-systemctl start httpd
+sudo systemctl start zabbix-server
+sudo systemctl start apache2
+
 ```
 
 
@@ -150,15 +177,17 @@ systemctl start httpd
 
 
 ```bash
-tail -f /var/log/zabbix/zabbix_server.log
+sudo tail -f /var/log/zabbix/zabbix_server.log
+
 ```
 
 
 بهینه‌سازی PostgreSQL
 
 ```bash
-timescaledb-tune --pg-config=/usr/pgsql-16/bin/pg_config --max-conns=100
-systemctl restart postgresql-16.service
+sudo timescaledb-tune --pg-config=/usr/lib/postgresql/16/bin/pg_config --max-conns=100
+sudo systemctl restart postgresql@16-main
+
 ```
 
 
