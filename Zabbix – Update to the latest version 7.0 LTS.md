@@ -26,7 +26,11 @@ sudo systemctl stop apache2
 زبیکس ۷ به نسخه PHP بین ۸.۰ تا ۸.۳ نیاز داره. الان ۸.۰ داریم ولی باز بروزرسانی انجام می‌دیم.
 با تغییر ماژول dnf در سطح سیستم عامل بروزرسانی می‌کنیم. نسخه قبل از آخرین (مثلاً ۸.۲) پایدارتره و نسخه آخر ممکنه باگ داشته باشه.
 ```bash
-dnf module switch-to php:8.2 -y
+sudo apt install software-properties-common
+sudo add-apt-repository ppa:ondrej/php -y
+sudo apt update
+sudo apt install php8.2 php8.2-fpm php8.2-cli php8.2-mysql php8.2-pgsql php8.2-xml php8.2-mbstring php8.2-bcmath php8.2-curl
+sudo systemctl restart php8.2-fpm
 ```
 بروزرسانی دیتابیس
 ابتدا سرویس PostgreSQL فعلی رو متوقف می‌کنیم:
