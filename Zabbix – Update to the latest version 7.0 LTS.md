@@ -7,12 +7,13 @@ psql -V
 Backup of Zabbix Configuration Files - بکاپ فایل‌های کانفیگ زبیکس
 قبل از ادامه کار، از تمام فایل‌های تنظیمات Zabbix سرور و پروکسی بکاپ می‌گیریم.
 ```bash
-cp -R /etc/zabbix/ /<backup directory>/
-cp -R /usr/lib/zabbix/alertscripts/ /<backup directory>/
-cp -R /usr/lib/zabbix/externalscripts/ /<backup directory>/
-cp -R /usr/share/zabbix/ /<backup directory>/
-cp /etc/httpd/conf/httpd.conf /<backup directory>/
-cp /etc/httpd/conf.d/zabbix.conf /<backup directory>/
+sudo cp -R /etc/zabbix/ ~/zabbix_backup/etc_zabbix
+sudo cp -R /usr/lib/zabbix/alertscripts/ ~/zabbix_backup/alertscripts
+sudo cp -R /usr/lib/zabbix/externalscripts/ ~/zabbix_backup/externalscripts
+sudo cp -R /usr/share/zabbix/ ~/zabbix_backup/share_zabbix
+sudo cp /etc/apache2/apache2.conf ~/zabbix_backup/apache2.conf
+sudo cp /etc/apache2/sites-available/zabbix.conf ~/zabbix_backup/zabbix.conf
+
 ```
 متوقف کردن سرویس‌ها
 اول سرویس Zabbix سرور و وب سرور رو متوقف می‌کنیم تا هیچ نوشتنی به دیتابیس صورت نگیره.
