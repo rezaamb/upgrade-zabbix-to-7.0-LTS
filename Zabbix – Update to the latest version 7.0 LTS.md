@@ -19,8 +19,8 @@ sudo cp /etc/apache2/sites-available/zabbix.conf ~/zabbix_backup/zabbix.conf
 اول سرویس Zabbix سرور و وب سرور رو متوقف می‌کنیم تا هیچ نوشتنی به دیتابیس صورت نگیره.
 
 ```bash
-systemctl stop zabbix-server
-systemctl stop httpd
+sudo systemctl stop zabbix-server
+sudo systemctl stop apache2
 ```
 بروزرسانی PHP
 زبیکس ۷ به نسخه PHP بین ۸.۰ تا ۸.۳ نیاز داره. الان ۸.۰ داریم ولی باز بروزرسانی انجام می‌دیم.
